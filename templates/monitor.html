@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIStation Monitor</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #38bdf8;
+            --danger: #f87171;
+            --success: #4ade80;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* This class forces the card to span 2 columns */
+        .wide-card {
+            grid-column: span 2;
+        }
+
+        /* Mobile fix: On small screens, force it back to 1 column so it doesn't break */
+        @media (max-width: 800px) {
+            .wide-card {
+                grid-column: span 1;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: var(--accent);
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+        }
+
+        .stat-value {
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            color: var(--success);
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--accent);
+            color: var(--bg-color);
+            font-size: 0.8rem;
+        }
+
+        .ollama-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .ollama-table th {
+            text-align: left;
+            color: var(--text-dim);
+            font-weight: 500;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .ollama-table td {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .model-name {
+            color: var(--text-main);
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #334155;
+            color: var(--accent);
+            font-size: 0.75rem;
+            border: 1px solid var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>AI STATION MONITOR</h1>
+
+    <div class="dashboard-grid">
+
+        <div class="card">
+            <h2>NVIDIA GPU</h2>
+            {% if nvidia.error %}
+            <p style="color: var(--danger);">{{ nvidia.error }}</p>
+            {% else %}
+            <div class="stat-row"><span class="stat-label">Utilization</span><span class="stat-value" id="gpu-util">>{{
+                    nvidia.util
+                    }}</span></div>
+            <div class="stat-row"><span class="stat-label">Temperature</span><span class="stat-value" id="gpu-temp">>{{
+                    nvidia.temp
+                    }}</span></div>
+            <div class="stat-row"><span class="stat-label">Memory Used</span><span class="stat-value" id="gpu-mem">>{{
+                    nvidia.mem
+                    }}</span></div>
+            <div class="stat-row"><span class="stat-label">Power Draw</span><span class="stat-value" id="gpu-power">> {{
+                    nvidia.power
+                    }}</span></div>
+            <div class="stat-row"><span class="stat-label">Fan Speed</span><span class="stat-value" id="gpu-fan">>{{
+                    nvidia.fan
+                    }}</span></div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h2>System Resources</h2>
+            <div class="stat-row"><span class="stat-label">Memory Used</span><span class="stat-value" id="sys-mem">{{
+                    sys.mem_used }}
+                    / {{ sys.mem_total }}</span></div>
+            <div class="stat-row"><span class="stat-label">Load Average</span><span class="stat-value" id="sys-load">{{
+                    sys.load
+                    }}</span></div>
+            <br>
+            <h2>Disk (nvme0n1p2)</h2>
+            {% if disk %}
+            <div class="stat-row"><span class="stat-label">Usage</span><span class="stat-value" id="disk-used">{{
+                    disk.used
+                    }}</span></div>
+            <div class="stat-row"><span class="stat-label">Usage %</span><span class="stat-value" id="disk-percent">{{
+                    disk.percent
+                    }}</span></div>
+            <div class="stat-row"><span class="stat-label">Available</span><span class="stat-value" id="disk-avail">{{
+                    disk.avail }} of
+                    {{ disk.size }}</span></div>
+            {% else %}
+            <p>Disk info unavailable</p>
+            {% endif %}
+        </div>
+
+        <div class="card wide-card">
+            <h2>Running Models (Ollama)</h2>
+            {% if ollama %}
+            <table class="ollama-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Size</th>
+                        <th>Processor</th>
+                        <th>Until</th>
+                    </tr>
+                </thead>
+                <tbody id="ollama-body">
+                    {% for model in ollama %}
+                    <tr>
+                        <td><span class="model-name" id="model-name">{{ model.name }}</span></td>
+                        <td id="model-size">{{ model.size }}</td>
+                        <td><span class="badge" id="model-processor">{{ model.processor }}</span></td>
+                        <td id="model-until">{{ model.until }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: var(--text-dim); font-style: italic; text-align: left;">No models currently loaded</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <script>
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+
+                // Update GPU Stats
+                if (!data.nvidia.error) {
+                    document.getElementById('gpu-util').innerText = data.nvidia.util;
+                    document.getElementById('gpu-temp').innerText = data.nvidia.temp;
+                    document.getElementById('gpu-mem').innerText = data.nvidia.mem;
+                    document.getElementById('gpu-power').innerText = data.nvidia.power;
+                    document.getElementById('gpu-fan').innerText = data.nvidia.fan;
+                }
+
+                // Update System Stats
+                document.getElementById('sys-load').innerText = data.sys.load;
+                document.getElementById('sys-mem').innerText = `${data.sys.mem_used} / ${data.sys.mem_total}`;
+
+                // Update Disk Stats
+                if (data.disk) {
+                    document.getElementById('disk-used').innerText = data.disk.used;
+                    document.getElementById('disk-percent').innerText = data.disk.percent;
+                    document.getElementById('disk-avail').innerText = `${data.disk.avail} of ${data.disk.size}`;
+                }
+
+                // Update Ollama Table
+                const ollamaBody = document.querySelector('.ollama-table ollama-body') || document.getElementById('ollama-body');
+                if (data.ollama.length > 0) {
+                    let html = '';
+                    data.ollama.forEach(model => {
+                        html += `<tr>
+                        <td><span class="model-name">${model.name}</span></td>
+                        <td>${model.size}</td>
+                        <td><span class="badge">${model.processor}</span></td>
+                        <td>${model.until}</td>
+                    </tr>`;
+                    });
+                    ollamaBody.innerHTML = html;
+                } else {
+                    ollamaBody.innerHTML = '<tr><td colspan="3" style="text-align:center">No models running</td></tr>';
+                }
+
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        // Run every 5 seconds (5000 milliseconds)
+        setInterval(updateStats, 1000);
+    </script>
+
+</body>
+
+</html>
