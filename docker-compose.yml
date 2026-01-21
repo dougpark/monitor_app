@@ -8,6 +8,9 @@ services:
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock  # Allows app to run 'docker exec'
+      # Timezone settings
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     deploy:
       resources:
         reservations:

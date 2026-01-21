@@ -1,9 +1,13 @@
 from flask import Flask, render_template
 from flask import jsonify
+from datetime import datetime
 import subprocess
 import re
 
 app = Flask(__name__)
+
+# Define the storage partition to monitor
+storage = "nvme0n1p2"
 
 def run_nvidia_smi():
     try:
@@ -21,7 +25,7 @@ def run_nvidia_smi():
 
 def run_ollama_ps():
     try:
-        # Get the output from the docker container
+        # Get the output from the ollama ps command inside the Docker container
         result = subprocess.run(['docker', 'exec', 'ollama', 'ollama', 'ps'], capture_output=True, text=True, check=True)
         lines = result.stdout.strip().splitlines()
         
@@ -47,6 +51,7 @@ def run_ollama_ps():
         return []
 
 def run_system_info():
+    # Get memory and load average
     try:
         mem_res = subprocess.run(['free', '-h'], capture_output=True, text=True, check=True)
         mem_match = re.search(r'Mem:\s+(\S+)\s+(\S+)', mem_res.stdout)
@@ -63,10 +68,11 @@ def run_system_info():
         return {"error": str(e)}
 
 def run_disk_usage():
+    # Get disk usage for the specified storage partition
     try:
         result = subprocess.run(['df', '-h'], capture_output=True, text=True, check=True)
         for line in result.stdout.splitlines():
-            if "nvme0n1p2" in line:
+            if storage in line:
                 parts = line.split()
                 return {"size": parts[1], "used": parts[2], "avail": parts[3], "percent": parts[4], "mount": parts[5]}
         return None
@@ -74,21 +80,27 @@ def run_disk_usage():
         return None
 
 @app.route('/')
+# Main monitoring page
 def monitor():
+    server_time = datetime.now().strftime("%a, %b %d, %Y %I:%M:%S %p")
     return render_template('monitor.html', 
                            nvidia=run_nvidia_smi(), 
                            ollama=run_ollama_ps(), 
                            sys=run_system_info(), 
-                           disk=run_disk_usage())
+                           disk=run_disk_usage(),
+                           server_time=server_time)
 
 @app.route('/api/stats')
+# API endpoint to get stats in JSON format
 def stats_api():
+    
     # This returns the raw data for JavaScript to use
     return jsonify({
         "nvidia": run_nvidia_smi(),
         "ollama": run_ollama_ps(),
         "sys": run_system_info(),
-        "disk": run_disk_usage()
+        "disk": run_disk_usage(),
+        "server_time": datetime.now().strftime("%a, %b %d, %Y %I:%M:%S %p")
     })
 
 if __name__ == '__main__':

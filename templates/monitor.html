@@ -81,8 +81,8 @@
         }
 
         .stat-value {
-            font-weight: bold;
-            font-family: 'Courier New', Courier, monospace;
+            /* font-weight: bold; */
+            /* font-family: 'Courier New', Courier, monospace; */
         }
 
         pre {
@@ -123,8 +123,8 @@
 
         .model-name {
             color: var(--text-main);
-            font-weight: bold;
-            font-family: 'Courier New', monospace;
+            /* font-weight: bold; */
+            /* font-family: 'Courier New', monospace; */
         }
 
         .badge {
@@ -135,10 +135,77 @@
             font-size: 0.75rem;
             border: 1px solid var(--accent);
         }
+
+        .clock-container {
+            text-align: right;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 15px;
+            /* Use the same font family as your H1 and H2 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #live-clock {
+            font-size: 1.1rem;
+            color: var(--text-main);
+            /* Match your primary text color */
+            font-weight: 500;
+            /* Medium weight is easier to read than Bold */
+            letter-spacing: -0.02em;
+            /* Makes modern fonts look tighter and cleaner */
+            /* text-transform: uppercase; */
+            /* Optional: gives it a "dashboard" look */
+        }
+
+        .status-indicator {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+
+        /* The blinking "Live" dot */
+        /* The base dot - no animation by default */
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-dim);
+            /* Gray when inactive */
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+        /* The active state - added via JavaScript when server is up */
+        .pulse.active {
+            background-color: var(--success);
+            /* Green when active */
+            box-shadow: 0 0 0 rgba(74, 222, 128, 0.4);
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% {
+                box-shadow: 0 0 0 0px rgba(74, 222, 128, 0.7);
+            }
+
+            100% {
+                box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
+            }
+        }
     </style>
 </head>
 
 <body>
+    <div class="clock-container">
+        <div id="live-clock">{{ server_time }}</div>
+        <div class="status-indicator">
+            <span class="pulse"></span> System Live
+        </div>
+    </div>
 
     <h1>AI STATION MONITOR</h1>
 
@@ -225,9 +292,26 @@
 
     <script>
         async function updateStats() {
+            const pulseDot = document.querySelector('.pulse'); // Select the dot
+            const clockElement = document.getElementById('live-clock');
+
             try {
                 const response = await fetch('/api/stats');
+                if (!response.ok) throw new Error("Server Error");
+
                 const data = await response.json();
+
+                // Server is UP: Add the animation class
+                pulseDot.classList.add('active');
+                if (data.server_time) {
+                    clockElement.innerText = data.server_time;
+                    clockElement.style.color = "var(--accent)"; // Reset color if it was red
+                }
+
+                // Update the Server Clock from the API response
+                if (data.server_time) {
+                    document.getElementById('live-clock').innerText = data.server_time;
+                }
 
                 // Update GPU Stats
                 if (!data.nvidia.error) {
@@ -269,11 +353,18 @@
 
             } catch (error) {
                 console.error('Error fetching stats:', error);
+                // Server is DOWN: Remove the animation class
+                pulseDot.classList.remove('active');
+                clockElement.innerText = "SERVER UNREACHABLE";
+                clockElement.style.color = "var(--danger)";
             }
         }
 
         // Run every 5 seconds (5000 milliseconds)
         setInterval(updateStats, 1000);
+
+
+
     </script>
 
 </body>
