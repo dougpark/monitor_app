@@ -1,0 +1,19 @@
+services:
+  monitor-app:
+    build: .
+    container_name: monitor_app
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock  # Allows app to run 'docker exec'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - PYTHONUNBUFFERED=1

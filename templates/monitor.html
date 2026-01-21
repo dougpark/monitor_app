@@ -194,7 +194,7 @@
 
         <div class="card wide-card">
             <h2>Running Models (Ollama)</h2>
-            {% if ollama %}
+
             <table class="ollama-table">
                 <thead>
                     <tr>
@@ -205,6 +205,7 @@
                     </tr>
                 </thead>
                 <tbody id="ollama-body">
+                    {% if ollama %}
                     {% for model in ollama %}
                     <tr>
                         <td><span class="model-name" id="model-name">{{ model.name }}</span></td>
@@ -213,11 +214,11 @@
                         <td id="model-until">{{ model.until }}</td>
                     </tr>
                     {% endfor %}
+
+                    {% endif %}
                 </tbody>
             </table>
-            {% else %}
-            <p style="color: var(--text-dim); font-style: italic; text-align: left;">No models currently loaded</p>
-            {% endif %}
+
         </div>
 
     </div>
@@ -262,7 +263,8 @@
                     });
                     ollamaBody.innerHTML = html;
                 } else {
-                    ollamaBody.innerHTML = '<tr><td colspan="3" style="text-align:center">No models running</td></tr>';
+                    ollamaBody.innerHTML = '<tr> \
+                        <td colspan="3" style="style="color: var(--text-dim); font-style: italic; text-align: left;">No models currently loaded</td></tr>';
                 }
 
             } catch (error) {
