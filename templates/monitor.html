@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AIStation Monitor</title>
     <style>
         :root {
@@ -19,12 +19,56 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
+            /* The Tactical Grid Overlay */
+            background-image:
+                linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            /* Size of the grid squares */
             color: var(--text-main);
             margin: 0;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+        }
+
+        @keyframes scanline {
+            0% {
+                transform: translateY(-100%);
+            }
+
+            100% {
+                transform: translateY(100%);
+            }
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(56, 189, 248, 0.02);
+            z-index: 1000;
+            pointer-events: none;
+            animation: scanline 8s linear infinite;
+        }
+
+        /* Optional: Add a subtle vignette to fade the grid at the edges */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 20%, var(--bg-color) 120%);
+            pointer-events: none;
+            /* Allows you to click things underneath */
+            z-index: -1;
         }
 
         .dashboard-grid {
@@ -33,6 +77,16 @@
             gap: 20px;
             width: 100%;
             max-width: 1200px;
+        }
+
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1200px;
+            flex-wrap: wrap;
+            /* This allows the clock to drop below the title on small phones */
         }
 
         /* This class forces the card to span 2 columns */
@@ -51,8 +105,24 @@
             background-color: var(--card-bg);
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.05);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+            position: relative;
+            /* This makes the card content sit above the background grid */
+            z-index: 1;
+        }
+
+        /* Subtle accent corner to make it look like a high-tech module */
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 20px;
+            height: 20px;
+            border-top: 2px solid var(--accent);
+            border-left: 2px solid var(--accent);
+            border-radius: 12px 0 0 0;
         }
 
         h1 {
@@ -110,10 +180,13 @@
 
         .ollama-table th {
             text-align: left;
-            color: var(--text-dim);
-            font-weight: 500;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #334155;
+            color: var(--accent);
+            /* Change to accent color */
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
         }
 
         .ollama-table td {
@@ -137,35 +210,33 @@
         }
 
         .clock-container {
-            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
             width: 100%;
             max-width: 1200px;
-            margin-bottom: 15px;
-            /* Use the same font family as your H1 and H2 */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin-bottom: 20px;
         }
 
+
         #live-clock {
+            font-family: 'Segoe UI Mono', 'Consolas', monospace;
+            /* Monospace for numbers */
             font-size: 1.1rem;
-            color: var(--text-main);
-            /* Match your primary text color */
-            font-weight: 500;
-            /* Medium weight is easier to read than Bold */
-            letter-spacing: -0.02em;
-            /* Makes modern fonts look tighter and cleaner */
-            /* text-transform: uppercase; */
-            /* Optional: gives it a "dashboard" look */
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 1px;
         }
 
         .status-indicator {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
             display: flex;
-            justify-content: flex-end;
             align-items: center;
             gap: 8px;
-            margin-top: 4px;
-            font-weight: 400;
+            margin-top: 5px;
         }
 
         /* The blinking "Live" dot */
@@ -196,18 +267,179 @@
                 box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
             }
         }
+
+        .header-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            /* Aligns both to the bottom of the row */
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 40px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+        }
+
+        .header-main {
+            flex: 1;
+            /* Takes up available space on the left */
+        }
+
+        /* Remove the old margin-bottom from H1 to keep it tight */
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--text-main), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 4px;
+        }
+
+        .clock-box {
+            text-align: right;
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-right: 4px solid var(--accent);
+            padding: 10px 20px;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+            margin-left: 20px;
+            /* Space between title and clock */
+        }
+
+        /* The "Tech Line" under the title */
+        .title-underline {
+            height: 2px;
+            width: 150px;
+            background: var(--accent);
+            margin-top: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* The moving light effect on the line */
+        .title-underline::after {
+            content: '';
+            position: absolute;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--text-main), transparent);
+            animation: scan 3s infinite linear;
+        }
+
+        @keyframes scan {
+            0% {
+                left: -100%;
+            }
+
+            100% {
+                left: 100%;
+            }
+        }
+
+        .title-tag {
+            font-size: 0.7rem;
+            color: var(--accent);
+            letter-spacing: 2px;
+            margin-bottom: -5px;
+            display: block;
+            font-weight: bold;
+        }
+
+        /* --- MOBILE RESPONSIVENESS --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                /* Less padding to save space */
+            }
+
+            .header-main h1 {
+                font-size: 1.8rem;
+                /* Shrink title */
+                letter-spacing: 2px;
+            }
+
+            .clock-container {
+                align-items: center;
+                /* Center clock on mobile */
+                margin-bottom: 20px;
+            }
+
+
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                /* Force single column */
+                gap: 15px;
+            }
+
+            .wide-card {
+                grid-column: span 1;
+                /* Force wide cards to shrink */
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            /* Make the table scrollable horizontally if it's too wide */
+            .ollama-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-wrapper {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 20px;
+            }
+
+            .header-main {
+                flex: none;
+            }
+
+            .clock-box {
+                margin-left: 0;
+                /* Change from 100% to auto to let margins work */
+                width: auto;
+                /* This creates the buffer on the left and right */
+                margin-left: 15px;
+                margin-right: 15px;
+                /* Alternatively, use a percentage width with margin: auto */
+                max-width: 90%;
+                align-self: center;
+                /* Ensures it stays centered in the flex column */
+
+                border-right: 1px solid rgba(56, 189, 248, 0.3);
+                border-bottom: 4px solid var(--accent);
+                text-align: center;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <div class="clock-container">
-        <div id="live-clock">{{ server_time }}</div>
-        <div class="status-indicator">
-            <span class="pulse"></span> System Live
+    <header class="header-wrapper">
+        <div class="header-main">
+            <span class="title-tag">NEURAL ENGINE TELEMETRY</span>
+            <h1>AI STATION</h1>
+            <div class="title-underline"></div>
         </div>
-    </div>
 
-    <h1>AI STATION MONITOR</h1>
+        <div class="clock-box">
+            <div id="live-clock">{{ server_time }}</div>
+            <div class="status-indicator">
+                <span class="pulse"></span>
+                <span id="status-text">Telemetry: Active</span>
+            </div>
+        </div>
+    </header>
 
     <div class="dashboard-grid">
 
@@ -294,12 +526,18 @@
         async function updateStats() {
             const pulseDot = document.querySelector('.pulse'); // Select the dot
             const clockElement = document.getElementById('live-clock');
+            const statusText = document.getElementById('status-text'); // Get the text element
 
             try {
                 const response = await fetch('/api/stats');
                 if (!response.ok) throw new Error("Server Error");
 
                 const data = await response.json();
+
+                // Server is available
+                statusText.innerText = "Telemetry: Active";
+                statusText.style.color = "var(--success)"; // Make the text green for visibility
+                document.querySelector('.clock-box').style.borderColor = "rgba(56, 189, 248, 0.3)";
 
                 // Server is UP: Add the animation class
                 pulseDot.classList.add('active');
@@ -353,10 +591,15 @@
 
             } catch (error) {
                 console.error('Error fetching stats:', error);
-                // Server is DOWN: Remove the animation class
+                // ERROR STATE
                 pulseDot.classList.remove('active');
-                clockElement.innerText = "SERVER UNREACHABLE";
+                statusText.innerText = "Telemetry: Unavailable";
+                statusText.style.color = "var(--danger)"; // Make the text red for visibility
+
+                clockElement.innerText = "OFFLINE";
                 clockElement.style.color = "var(--danger)";
+
+                document.querySelector('.clock-box').style.borderColor = "var(--danger)";
             }
         }
 
