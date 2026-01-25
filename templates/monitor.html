@@ -12,6 +12,7 @@
             --text-main: #f8fafc;
             --text-dim: #94a3b8;
             --accent: #38bdf8;
+            --warning: #fbbf24;
             --danger: #f87171;
             --success: #4ade80;
         }
@@ -150,10 +151,10 @@
             color: var(--text-dim);
         }
 
-        .stat-value {
-            /* font-weight: bold; */
-            /* font-family: 'Courier New', Courier, monospace; */
-        }
+        /* .stat-value {
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+        } */
 
         pre {
             background: #000;
@@ -421,6 +422,26 @@
                 text-align: center;
             }
         }
+
+        .fan-status {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 10px;
+            text-transform: uppercase;
+        }
+
+        .status-silent {
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--text-dim);
+            border: 1px solid var(--text-dim);
+        }
+
+        .status-active {
+            background: rgba(74, 222, 128, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
     </style>
 </head>
 
@@ -475,7 +496,34 @@
                     sys.load
                     }}</span></div>
             <br>
-            <h2>Disk (nvme0n1p2)</h2>
+            <h2 style="margin-top: 20px;">Thermals</h2>
+            <div class="stat-row">
+                <span class="stat-label">CPU Temp (Tctl)</span>
+                <span class="stat-value" id="cpu-temp" style="color: var(--text-main);">{{ temps.cpu_temp }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">NVMe SSD</span>
+                <span class="stat-value" id="ssd-temp" style="color: var(--text-main);">{{ temps.ssd_temp }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">VRM MOS (Voltage Regulator Modules)</span>
+                <span class="stat-value" id="vrm-temp">{{ temps.vrm_temp }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">AIO Pump</span>
+                <span class="stat-value" id="pump-speed">{{ temps.pump_speed }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">System Fans</span>
+                <div>
+                    <span id="fan-badge" class="fan-status"></span>
+                    <span class="stat-value" id="sys-fan-1">{{ temps.sys_fan_1 }}</span>
+
+                </div>
+            </div>
+
+            <br>
+            <h2>Disk ({{ disk.storage }})</h2>
             {% if disk %}
             <div class="stat-row"><span class="stat-label">Usage</span><span class="stat-value" id="disk-used">{{
                     disk.used
@@ -524,6 +572,7 @@
 
     <script>
         async function updateStats() {
+            let isAnyTempDangerous = false;
             const pulseDot = document.querySelector('.pulse'); // Select the dot
             const clockElement = document.getElementById('live-clock');
             const statusText = document.getElementById('status-text'); // Get the text element
@@ -564,6 +613,93 @@
                 document.getElementById('sys-load').innerText = data.sys.load;
                 document.getElementById('sys-mem').innerText = `${data.sys.mem_used} / ${data.sys.mem_total}`;
 
+                // Update Thermal Stats
+                if (data.temps) {
+
+                    // CPU Temp
+                    const cpuEl = document.getElementById('cpu-temp');
+                    const cpuVal = Math.ceil(parseFloat(data.temps.cpu_temp));
+                    cpuEl.innerText = cpuVal + "°C";
+
+                    // Dynamic Color Warning for CPU
+                    if (cpuVal > 80) {
+                        cpuEl.style.color = "var(--danger)";
+                        isAnyTempDangerous = true;
+
+                    } else {
+                        cpuEl.style.color = "var(--text-main)";
+
+                    }
+
+                    // SSD Temp
+                    const ssdEl = document.getElementById('ssd-temp');
+                    const ssdVal = Math.ceil(parseFloat(data.temps.ssd_temp));
+                    ssdEl.innerText = ssdVal + "°C";
+
+                    // Dynamic Color Warning for SSD
+                    if (ssdVal > 70) {
+                        ssdEl.style.color = "var(--danger)";
+                        isAnyTempDangerous = true;
+                    } else {
+                        ssdEl.style.color = "var(--text-main)";
+
+                    }
+
+                    // VRM Temp
+                    const vrmEl = document.getElementById('vrm-temp');
+                    const vrmVal = Math.ceil(parseFloat(data.temps.vrm_temp));
+                    vrmEl.innerText = vrmVal + "°C";
+
+                    // Dynamic Color Warning for VRM
+                    if (vrmVal > 90) {
+                        vrmEl.style.color = "var(--danger)";
+                        isAnyTempDangerous = true;
+                    } else {
+                        vrmEl.style.color = "var(--text-main)";
+                    }
+
+                    // AIO Pump Speed
+                    const pumpSpeed = parseInt(data.temps.pump_speed);
+                    const pumpEl = document.getElementById('pump-speed');
+
+                    if (pumpSpeed < 500) {
+                        pumpEl.style.color = "var(--danger)";
+                        pumpEl.innerHTML = `⚠️ Low ${data.temps.pump_speed}`;
+                        isAnyTempDangerous = true;
+
+                    } else {
+                        pumpEl.style.color = "var(--text-main)";
+
+                    }
+
+                    // Highlight card if any temp is dangerous
+                    if (isAnyTempDangerous) {
+                        cpuEl.closest('.card').style.boxShadow = "0 0 20px #f87171";
+                    } else {
+                        cpuEl.closest('.card').style.boxShadow = "";
+                    }
+
+                    // System Fan
+                    const fanValue = data.temps.sys_fan_1;
+                    const fanEl = document.getElementById('sys-fan-1');
+                    const badgeEl = document.getElementById('fan-badge');
+
+                    fanEl.innerText = fanValue;
+
+                    if (parseInt(fanValue) === 0) {
+                        fanEl.innerText = "";
+                        badgeEl.innerText = "Idle";
+                        badgeEl.className = "fan-status status-silent";
+                        fanEl.style.color = "var(--text-dim)";
+                    } else {
+                        badgeEl.innerText = "Active";
+                        badgeEl.className = "fan-status status-active";
+                        fanEl.style.color = "var(--success)";
+                    }
+
+
+                }
+
                 // Update Disk Stats
                 if (data.disk) {
                     document.getElementById('disk-used').innerText = data.disk.used;
@@ -576,12 +712,21 @@
                 if (data.ollama.length > 0) {
                     let html = '';
                     data.ollama.forEach(model => {
+                        // Determine the color based on processor status
+                        const isFullGpu = model.processor === "100% GPU";
+                        const badgeColor = isFullGpu ? 'var(--success)' : 'var(--warning)'; // Success green vs Warning yellow
+                        const badgeBorder = isFullGpu ? 'var(--success)' : 'var(--warning)';
+
                         html += `<tr>
-                        <td><span class="model-name">${model.name}</span></td>
-                        <td>${model.size}</td>
-                        <td><span class="badge">${model.processor}</span></td>
-                        <td>${model.until}</td>
-                    </tr>`;
+                            <td><span class="model-name">${model.name}</span></td>
+                            <td>${model.size}</td>
+                            <td>
+                                <span class="badge" style="color: ${badgeColor}; border-color: ${badgeBorder};">
+                                    ${model.processor}
+                                </span>
+                            </td>
+                            <td>${model.until}</td>
+                        </tr>`;
                     });
                     ollamaBody.innerHTML = html;
                 } else {
@@ -601,6 +746,9 @@
 
                 document.querySelector('.clock-box').style.borderColor = "var(--danger)";
             }
+
+
+
         }
 
         // Run every 5 seconds (5000 milliseconds)

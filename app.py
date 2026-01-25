@@ -3,11 +3,52 @@ from flask import jsonify
 from datetime import datetime
 import subprocess
 import re
+import psutil
 
 app = Flask(__name__)
 
 # Define the storage partition to monitor
 storage = "nvme0n1p2"
+
+def run_temp_info():
+    try:
+        temps = psutil.sensors_temperatures()
+        fans = psutil.sensors_fans()
+        
+        data = {
+            "cpu_temp": "N/A",
+            "ssd_temp": "N/A",
+            "vrm_temp": "N/A",
+            "pump_speed": "0 RPM",
+            "sys_fan_1": "0 RPM"
+        }
+
+        # Temperatures
+        if 'k10temp' in temps:
+            data["cpu_temp"] = f"{temps['k10temp'][0].current}°C"
+        
+        if 'nvme' in temps:
+            data["ssd_temp"] = f"{temps['nvme'][0].current}°C"
+
+        # Motherboard Specifics (nct6687)
+        if 'nct6687' in temps:
+            for entry in temps['nct6687']:
+                if entry.label == 'VRM MOS':
+                    data["vrm_temp"] = f"{entry.current}°C"
+
+        if 'nct6687' in fans:
+            for entry in fans['nct6687']:
+                if entry.label == 'Pump Fan':
+                    data["pump_speed"] = f"{entry.current} RPM"
+                elif entry.label == 'System Fan #1':
+                    # data["sys_fan_1"] = f"{entry.current} RPM"
+                    # Check if it's 0 to set a status
+                    rpm = entry.current
+                    data["sys_fan_1"] = f"{rpm} RPM" if rpm > 0 else "0 RPM"
+        
+        return data
+    except Exception as e:
+        return {"error": str(e)}
 
 def run_nvidia_smi():
     try:
@@ -74,21 +115,26 @@ def run_disk_usage():
         for line in result.stdout.splitlines():
             if storage in line:
                 parts = line.split()
-                return {"size": parts[1], "used": parts[2], "avail": parts[3], "percent": parts[4], "mount": parts[5]}
+                return {"storage": storage,"size": parts[1], "used": parts[2], "avail": parts[3], "percent": parts[4], "mount": parts[5]}
         return None
     except Exception:
         return None
 
+# Helper function to get current server time
+# Returns formated time string: Sun, Jan 25, 2026 10:56:42 AM
+def get_server_time():
+    return datetime.now().strftime("%a, %b %d, %Y %I:%M:%S %p")
+
 @app.route('/')
 # Main monitoring page
 def monitor():
-    server_time = datetime.now().strftime("%a, %b %d, %Y %I:%M:%S %p")
     return render_template('monitor.html', 
                            nvidia=run_nvidia_smi(), 
                            ollama=run_ollama_ps(), 
                            sys=run_system_info(), 
                            disk=run_disk_usage(),
-                           server_time=server_time)
+                           temps=run_temp_info(),
+                           server_time=get_server_time())
 
 @app.route('/api/stats')
 # API endpoint to get stats in JSON format
@@ -100,7 +146,8 @@ def stats_api():
         "ollama": run_ollama_ps(),
         "sys": run_system_info(),
         "disk": run_disk_usage(),
-        "server_time": datetime.now().strftime("%a, %b %d, %Y %I:%M:%S %p")
+        "temps": run_temp_info(),
+        "server_time": get_server_time()
     })
 
 if __name__ == '__main__':

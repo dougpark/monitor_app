@@ -11,6 +11,7 @@ services:
       # Timezone settings
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+      - /sys:/sys:ro
     deploy:
       resources:
         reservations:
