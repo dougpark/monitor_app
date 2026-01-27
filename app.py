@@ -18,16 +18,18 @@ import re
 import psutil
 import time
 
-app = Flask(__name__)
-
-# Define the storage partition to monitor
-storage = "nvme0n1p2"
+# --- CONSTANTS (Settings) ---
+# Define the STORAGE_TARGET partition to monitor
+STORAGE_TARGET = "nvme0n1p2"
 
 # Configurable cache timers
 FAST_INTERVAL = 1.0   # 1 second
 SLOW_INTERVAL = 60.0  # 1 minute
 
-# Global variables to store the cache
+# --- GLOBAL STATE (Mutable) ---
+app = Flask(__name__)
+
+# Store the cache
 cache = {
     "fast_data": {},
     "slow_data": {},
@@ -143,12 +145,12 @@ def run_disk_usage():
         result = subprocess.run(['df', '-h'], capture_output=True, text=True, check=True)
         
         for line in result.stdout.splitlines():
-            # Check if our storage name (e.g., "nvme0n1p2") is in this line
-            if storage in line:
+            # Check if our STORAGE_TARGET name (e.g., "nvme0n1p2") is in this line
+            if STORAGE_TARGET in line:
                 parts = line.split()
                 # df output columns: Filesystem, Size, Used, Avail, Use%, Mounted on
                 return {
-                    "storage": storage,
+                    "storage": STORAGE_TARGET,
                     "size": parts[1], 
                     "used": parts[2], 
                     "avail": parts[3], 
@@ -157,12 +159,12 @@ def run_disk_usage():
                 }
         
         # If loop finishes without finding the string
-        return {"storage": storage+" not found", "size": "N/A", "used": "N/A", "avail": "N/A", "percent": "0%", "mount": "N/A"}
+        return {"storage": STORAGE_TARGET +" not found", "size": "N/A", "used": "N/A", "avail": "N/A", "percent": "0%", "mount": "N/A"}
 
     except Exception as e:
         # Print the actual error to your terminal so you can see why it failed
         print(f"Disk Usage Error: {e}")
-        return {"storage": storage, "size": "Error", "used": "N/A", "avail": "N/A", "percent": "0%", "mount": "N/A"}
+        return {"storage": STORAGE_TARGET, "size": "Error", "used": "N/A", "avail": "N/A", "percent": "0%", "mount": "N/A"}
 
 # Helper function to get current server time
 # Returns formated time string: Sun, Jan 25, 2026 10:56:42 AM
