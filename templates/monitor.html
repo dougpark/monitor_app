@@ -442,6 +442,80 @@
             color: var(--success);
             border: 1px solid var(--success);
         }
+
+        .temp-status {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 10px;
+            text-transform: uppercase;
+        }
+
+        .status-high {
+            background: rgba(74, 222, 128, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        /* Tooltip Container */
+        .tooltip-trigger {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dashed var(--text-dim);
+            /* Visual cue that it's hoverable */
+        }
+
+        /* Tooltip Text */
+        .tooltip-trigger::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            padding: 10px 14px;
+            /* Slightly more padding for readability */
+            border-radius: 6px;
+            border: 1px solid var(--accent);
+            font-size: 0.75rem;
+            z-index: 10;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+
+            /* --- THE MULTI-LINE FIXES --- */
+            white-space: normal;
+            /* Allows text to wrap */
+            width: 220px;
+            /* Sets a standard width */
+            line-height: 1.4;
+            /* Adds space between lines so it's not cramped */
+            text-align: center;
+            /* Keeps the text looking neat */
+        }
+
+        /* Show on Hover */
+        .tooltip-trigger:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Disable tooltips on screens smaller than 768px (Tablets and Phones) */
+        @media (max-width: 768px) {
+
+            .tooltip-trigger::after,
+            .tooltip-trigger::before {
+                display: none !important;
+            }
+
+            .tooltip-trigger {
+                cursor: default;
+                border-bottom: none;
+                /* Removes the dashed line on mobile */
+            }
+        }
     </style>
 </head>
 
@@ -488,29 +562,35 @@
         </div>
 
         <div class="card">
-            <h2>System Resources</h2>
-            <div class="stat-row"><span class="stat-label">Memory Used</span><span class="stat-value" id="sys-mem">{{
-                    sys.mem_used }}
-                    / {{ sys.mem_total }}</span></div>
-            <div class="stat-row"><span class="stat-label">Load Average</span><span class="stat-value" id="sys-load">{{
-                    sys.load
-                    }}</span></div>
-            <br>
-            <h2 style="margin-top: 20px;">Thermals</h2>
+            <h2>Thermals</h2>
             <div class="stat-row">
-                <span class="stat-label">CPU Temp (Tctl)</span>
-                <span class="stat-value" id="cpu-temp" style="color: var(--text-main);">{{ temps.cpu_temp }}</span>
+                <span class="stat-label">
+                    <span class="tooltip-trigger"
+                        data-tooltip="TCTL - Temperature Control: The highest sensor reading on the CPU chip. This is the value used to trigger cooling fans.">CPU
+                        Temp</span>
+                </span>
+                <div>
+                    <span id="cpuTemp-badge" class="temp-status"></span>
+                    <span class="stat-value" id="cpu-temp" style="color: var(--text-main);">{{ temps.cpu_temp }}</span>
+                </div>
             </div>
             <div class="stat-row">
                 <span class="stat-label">NVMe SSD</span>
                 <span class="stat-value" id="ssd-temp" style="color: var(--text-main);">{{ temps.ssd_temp }}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">VRM MOS (Voltage Regulator Modules)</span>
+                <span class="stat-label">
+                    <span class="tooltip-trigger"
+                        data-tooltip="Voltage Regulator Modules: Manages power delivery to the CPU.">VRM MOS</span>
+                </span>
                 <span class="stat-value" id="vrm-temp">{{ temps.vrm_temp }}</span>
             </div>
             <div class="stat-row">
-                <span class="stat-label">AIO Pump</span>
+                <span class="stat-label">
+                    <span class="tooltip-trigger"
+                        data-tooltip="All-In-One Liquid Cooler: Circulates coolant to keep the CPU temperatures stable during heavy AI workloads.">AIO
+                        Pump</span>
+                </span>
                 <span class="stat-value" id="pump-speed">{{ temps.pump_speed }}</span>
             </div>
             <div class="stat-row">
@@ -521,8 +601,23 @@
 
                 </div>
             </div>
+        </div>
 
+        <div class="card">
+            <h2>System Resources</h2>
+            <div class="stat-row"><span class="stat-label">Memory Used</span><span class="stat-value" id="sys-mem">{{
+                    sys.mem_used }}
+                    / {{ sys.mem_total }}</span></div>
+            <div class="stat-row">
+                <span class="stat-label">
+                    <span class="tooltip-trigger"
+                        data-tooltip="Average number of processes using or waiting for the CPU over the last 1, 5, and 15 minutes.">Load
+                        Average</span>
+                </span>
+                <span class="stat-value" id="sys-load">{{ sys.load }}</span>
+            </div>
             <br>
+
             <h2>Disk ({{ disk.storage }})</h2>
             {% if disk %}
             <div class="stat-row"><span class="stat-label">Usage</span><span class="stat-value" id="disk-used">{{
@@ -620,12 +715,14 @@
                     const cpuEl = document.getElementById('cpu-temp');
                     const cpuVal = Math.ceil(parseFloat(data.temps.cpu_temp));
                     cpuEl.innerText = cpuVal + "°C";
+                    const cpuTempEl = document.getElementById('cpuTemp-badge');
 
                     // Dynamic Color Warning for CPU
                     if (cpuVal > 80) {
                         cpuEl.style.color = "var(--danger)";
                         isAnyTempDangerous = true;
-
+                        cpuTempEl.innerText = "High";
+                        cpuTempEl.className = "temp-status status-high";
                     } else {
                         cpuEl.style.color = "var(--text-main)";
 
